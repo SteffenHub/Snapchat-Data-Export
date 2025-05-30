@@ -73,25 +73,31 @@ def to_passed(file_path, sub_dir: str) -> str:
 
 
 def to_manual_check(file_path, sub_dir, matching_dates=None) -> str:
-    found_path = f"{OUTPUT_PATH}/manual_check/{sub_dir}"
+    found_path = os.path.join(OUTPUT_PATH, "manual_check", sub_dir)
     os.makedirs(found_path, exist_ok=True)
     destination_path = safe_move(file_path, found_path)
-    if sub_dir == "date_not_matching_file_name_date":
+
+    message_map = {
+        "date_not_matching_file_name_date": (
+            "The oldest found date does not match the date in the file name.\n"
+            "The oldest date either in the file name or in the JSON files was set for this file.\n"
+            "If the file name date was used, the time was set to 00:00.\n"
+            "Please check which date is correct.\n\n"
+        ),
+        "older_date_than_file_name_date_found": (
+            "Found a date in the JSON files which is older than the date in the filename.\n"
+            "The oldest date either in the file name or in the JSON files was set for this file.\n"
+            "If the file name date was used, the time was set to 00:00.\n"
+            "Please check which date is correct.\n\n"
+        )
+    }
+
+    if sub_dir in message_map:
         with open(destination_path + ".txt", "w", encoding="utf-8") as f:
-            f.write("The oldest found date does not matches the date in the file name. \n"
-                    "The oldest date either in the file name or in the json files was set for this file \n "
-                    "If the file name date was used the time was set to 00:00 \n"
-                    "Please check which date is correct \n \n")
-            for date in matching_dates:
-                f.write(date + "\n")
-    if sub_dir == "older_date_than_file_name_date_found":
-        with open(destination_path + ".txt", "w", encoding="utf-8") as f:
-            f.write("Found a date in the json files which is older than the date in the filename \n"
-                    "The oldest date either in the file name or in the json files was set for this file \n "
-                    "If the file name date was used the time was set to 00:00 \n"
-                    "Please check which date is correct \n \n")
-            for date in matching_dates:
-                f.write(date + "\n")
+            f.write(message_map[sub_dir])
+            if matching_dates:
+                f.write("\n".join(matching_dates))
+
     return destination_path
 
 
