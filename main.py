@@ -74,14 +74,16 @@ def to_manual_check(file_path, sub_dir, matching_dates=None) -> str:
     if sub_dir == "date_not_matching_file_name_date":
         with open(destination_path + ".txt", "w", encoding="utf-8") as f:
             f.write("The oldest found date does not matches the date in the file name. \n"
-                    "The oldest found date was set for this file \n "
+                    "The oldest date either in the file name or in the json files was set for this file \n "
+                    "If the file name date was used the time was set to 00:00 \n"
                     "Please check which date is correct \n \n")
             for date in matching_dates:
                 f.write(date + "\n")
     if sub_dir == "older_date_than_file_name_date_found":
         with open(destination_path + ".txt", "w", encoding="utf-8") as f:
-            f.write("The oldest found date does not matches the date in the file name. \n"
-                    "The oldest found date which is matching the date in the file name was set for this file \n "
+            f.write("Found a date in the json files which is older than the date in the filename \n"
+                    "The oldest date either in the file name or in the json files was set for this file \n "
+                    "If the file name date was used the time was set to 00:00 \n"
                     "Please check which date is correct \n \n")
             for date in matching_dates:
                 f.write(date + "\n")
@@ -152,11 +154,10 @@ def calc(copied_data_path: str):
                                 oldest_match_date = date
                 if oldest_match_date is None:
                     destination_path = to_manual_check(file_path, "date_not_matching_file_name_date", matching_dates)
-                    # TODO Take file name date if it is older
-                    os.utime(destination_path, (oldest_date.timestamp(), oldest_date.timestamp()))
                 else:
                     destination_path = to_manual_check(file_path, "older_date_than_file_name_date_found", matching_dates)
-                    os.utime(destination_path, (oldest_match_date.timestamp(), oldest_match_date.timestamp()))
+                timestamp = date_from_file_name.timestamp() if date_from_file_name.date() < oldest_date.date() else oldest_date.timestamp()
+                os.utime(destination_path, (timestamp, timestamp))
             else:
                 destination_path = to_found(file_path)
                 os.utime(destination_path, (oldest_date.timestamp(), oldest_date.timestamp()))
