@@ -5,27 +5,38 @@ from urllib.parse import urlparse, parse_qs
 import shutil
 from tqdm import tqdm
 
-data_path = "./mydata-xxxxxx" # TODO copy before calc and delete afterwards
+data_path = "./mydata-xxxxxx"
 history_path = "./json/memories_history.json"
 output_path = "./snapchat-memory-export-result"
 photo_endings = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.webp', '.tiff'}
 video_endings = {'.mp4', '.mov', '.avi', '.mkv', '.webm', '.flv', '.wmv', '.m4v'}
 
-def safe_move(src_path, dst_dir) -> str:
-    if not os.path.isfile(src_path):
-        raise FileNotFoundError(f"The file does not exists: {src_path}")
+def safe_move(src_path: str, dst_dir: str, move: bool = True) -> str:
+    if not os.path.exists(src_path):
+        raise FileNotFoundError(f"Path does not exists: {src_path}")
 
-    filename = os.path.basename(src_path)
-    name, ext = os.path.splitext(filename)
-    dst_path = os.path.join(dst_dir, filename)
+    base_name = os.path.basename(src_path)
+    name, ext = os.path.splitext(base_name)
+    dst_path = os.path.join(dst_dir, base_name)
     counter = 1
 
     while os.path.exists(dst_path):
-        new_filename = f"{name} ({counter}){ext}"
-        dst_path = os.path.join(dst_dir, new_filename)
+        if os.path.isdir(src_path):
+            new_name = f"{name} ({counter})"
+            dst_path = os.path.join(dst_dir, new_name)
+        else:
+            new_name = f"{name} ({counter}){ext}"
+            dst_path = os.path.join(dst_dir, new_name)
         counter += 1
 
-    shutil.move(src_path, dst_path)
+    if not move:
+        if os.path.isdir(src_path):
+            shutil.copytree(src_path, dst_path)
+        else:
+            shutil.copy2(src_path, dst_path)
+    else:
+        shutil.move(src_path, dst_path)
+
     return str(dst_path)
 
 
@@ -72,11 +83,11 @@ def to_manual_check(file_path, sub_dir, matching_dates=None) -> str:
                 f.write(date + "\n")
     return destination_path
 
-def calc():
+def calc(copied_data_path: str):
     with open(history_path, "r", encoding="utf-8") as file:
         history = json.load(file)
 
-    all_file_paths = get_all_file_paths(data_path)
+    all_file_paths = get_all_file_paths(copied_data_path)
 
     for file_path in tqdm(all_file_paths):
         if ".DS_Store" in file_path:
@@ -101,7 +112,7 @@ def calc():
 
         if len(matching_dates) == 0:
             to_not_found(file_path)
-            # TODO use date from filename
+            # TODO use date from filename if exists
         elif len(matching_dates) > 1:
             destination_path = to_manual_check(file_path, "many_dates", matching_dates)
             oldest_date = min(
@@ -117,7 +128,10 @@ def calc():
             os.utime(destination_path, (timestamp, timestamp))
 
 def main():
-    calc()
+    copied_data_path = safe_move(data_path, os.path.dirname(data_path), False)
+    calc(copied_data_path)
+    print(f"Make sure that {copied_data_path} only contains empty Folders in it. \n"
+          f"If there are files left these are not considered in this calculation") # TODO automatically check if path is empty
 
 
 if __name__ == '__main__':
