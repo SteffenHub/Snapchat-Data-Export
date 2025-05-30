@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 data_path = "./mydata-xxxxxx"
 history_path = "./json/memories_history.json"
-OUTPUT_PATH = "./snapchat-memory-export-result"
+OUTPUT_PATH = f"./{datetime.now().strftime("%Y-%m-%d at %H-%M")} Snapchat Data Export"
 PHOTO_SUFFIX = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.webp', '.tiff'}
 VIDEO_SUFFIX = {'.mp4', '.mov', '.avi', '.mkv', '.webm', '.flv', '.wmv', '.m4v'}
 DATE_FILE_NAME_PATTERN = re.compile(r"^(\d{4})-(\d{2})-(\d{2})")
