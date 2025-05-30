@@ -137,15 +137,16 @@ def read_all_ids_from_json() -> list[dict[str, str | list[str]]]:
 
     for messages in chat_history.values():
         for msg in messages:
-            if msg.get("Media Type") == "MEDIA": #and msg["Media IDs"] != "":
+            if msg.get("Media Type") == "MEDIA" and msg["Media IDs"] != "":
                 media_ids = msg.get("Media IDs")
                 media_ids = media_ids if isinstance(media_ids, list) else [media_ids]
+                # TODO what if msg["Created"] is empty
                 ids.append({"date": msg["Created"], "ids": media_ids, "found_message": f"Found in chat_history.json in chat with {msg.get('From')}"})
 
     return ids
 
 
-def get_matching_dates(file_path, ids) -> tuple[list[str], datetime, datetime | None, list[str]]:
+def get_matching_dates(file_path, ids) -> tuple[list[str], datetime | None, datetime | None, list[str]]:
     matching_dates: list[str] = [entry["date"] for entry in ids
                       if any(media_id in file_path for media_id in entry["ids"])]
     found_in_messages: list[str] = [entry["found_message"] for entry in ids
@@ -153,6 +154,8 @@ def get_matching_dates(file_path, ids) -> tuple[list[str], datetime, datetime | 
 
     parsed_dates: list[datetime] = [datetime.strptime(d.replace(" UTC", ""), "%Y-%m-%d %H:%M:%S")
                     for d in matching_dates]
+    if len(matching_dates) == 0:
+        return [], None, None, []
 
     oldest_date = min(parsed_dates)
     file_date = get_datetime_from_file_path(file_path).date()
