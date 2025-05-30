@@ -8,10 +8,10 @@ from tqdm import tqdm
 
 data_path = "./mydata-xxxxxx"
 history_path = "./json/memories_history.json"
-output_path = "./snapchat-memory-export-result"
-photo_endings = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.webp', '.tiff'}
-video_endings = {'.mp4', '.mov', '.avi', '.mkv', '.webm', '.flv', '.wmv', '.m4v'}
-date_file_name_pattern = re.compile(r"^(\d{4})-(\d{2})-(\d{2})")
+OUTPUT_PATH = "./snapchat-memory-export-result"
+PHOTO_SUFFIX = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.webp', '.tiff'}
+VIDEO_SUFFIX = {'.mp4', '.mov', '.avi', '.mkv', '.webm', '.flv', '.wmv', '.m4v'}
+DATE_FILE_NAME_PATTERN = re.compile(r"^(\d{4})-(\d{2})-(\d{2})")
 IGNORE_FILES = {".DS_Store", ".gitkeep", ".gitignore", "Thumbs.db", "desktop.ini"}
 # TODO enumerate result folder
 # TODO describe output directories
@@ -54,22 +54,22 @@ def get_all_file_paths(path) -> list[str]:
     return file_names
 
 def to_found(file_path) -> str:
-    found_path = f"{output_path}/found_files"
+    found_path = f"{OUTPUT_PATH}/found_files"
     os.makedirs(found_path, exist_ok=True)
     return safe_move(file_path, found_path)
 
 def to_not_found(file_path) -> str:
-    found_path = f"{output_path}/not_found_files"
+    found_path = f"{OUTPUT_PATH}/not_found_files"
     os.makedirs(found_path, exist_ok=True)
     return safe_move(file_path, found_path)
 
 def to_passed(file_path, sub_dir: str) -> str:
-    found_path = f"{output_path}/passed_files/{sub_dir}"
+    found_path = f"{OUTPUT_PATH}/passed_files/{sub_dir}"
     os.makedirs(found_path, exist_ok=True)
     return safe_move(file_path, found_path)
 
 def to_manual_check(file_path, sub_dir, matching_dates=None) -> str:
-    found_path = f"{output_path}/passed_files/{sub_dir}"
+    found_path = f"{OUTPUT_PATH}/passed_files/{sub_dir}"
     os.makedirs(found_path, exist_ok=True)
     new_path = "/".join(file_path.split('/')[2:])
     new_path = f"{found_path}/{new_path}"
@@ -100,7 +100,7 @@ def calc(copied_data_path: str):
         if "overlay" in file_path:
             to_passed(file_path, "overlays")
             continue
-        if ("." + file_path.split(".")[-1] not in photo_endings) and ("." + file_path.split(".")[-1] not in video_endings):
+        if ("." + file_path.split(".")[-1] not in PHOTO_SUFFIX) and ("." + file_path.split(".")[-1] not in VIDEO_SUFFIX):
             to_passed(file_path, "other_files")
             continue
         matching_dates: list[str] = []
@@ -117,7 +117,7 @@ def calc(copied_data_path: str):
 
         if len(matching_dates) == 0:
             destination_path = to_not_found(file_path)
-            match = date_file_name_pattern.match(os.path.basename(destination_path))
+            match = DATE_FILE_NAME_PATTERN.match(os.path.basename(destination_path))
             if match:
                 year, month, day = map(int, match.groups())
                 date = datetime(year, month, day)
