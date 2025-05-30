@@ -136,33 +136,26 @@ def read_all_ids_from_json() -> list[dict[str, str | list[str]]]:
     return ids
 
 
-def get_matching_dates(file_path, ids) -> list[str]:
-    matching_dates: list[str] = []
-    for entry in ids:
-        for media_id in entry["ids"]:
-            if media_id in file_path:
-                matching_dates.append(entry["date"])
-                break
-    return matching_dates
+def get_matching_dates(file_path, ids) -> tuple[list[str], datetime, datetime | None]:
+    matching_dates: list[str] = [entry["date"] for entry in ids
+                      if any(media_id in file_path for media_id in entry["ids"])]
+
+    parsed_dates: list[datetime] = [datetime.strptime(d.replace(" UTC", ""), "%Y-%m-%d %H:%M:%S")
+                    for d in matching_dates]
+
+    oldest_date = min(parsed_dates)
+    file_date = get_datetime_from_file_path(file_path).date()
+
+    same_day_matches = [d for d in parsed_dates if d.date() == file_date]
+    oldest_same_day = min(same_day_matches) if same_day_matches else None
+
+    return matching_dates, oldest_date, oldest_same_day
 
 
-def handle_found_date(file_path, matching_dates):
-    oldest_date = min(
-        datetime.strptime(d.replace(" UTC", ""), "%Y-%m-%d %H:%M:%S")
-        for d in matching_dates
-    )
+def handle_found_date(file_path, matching_dates, oldest_date, oldest_same_day):
     date_from_file_name = get_datetime_from_file_path(file_path)
     if oldest_date.date() != date_from_file_name.date():
-        oldest_match_date = None
-        for d in matching_dates:
-            date = datetime.strptime(d.replace(" UTC", ""), "%Y-%m-%d %H:%M:%S")
-            if date.date() == date_from_file_name.date():
-                if oldest_match_date is None:
-                    oldest_match_date = date
-                else:
-                    if date < oldest_match_date:
-                        oldest_match_date = date
-        if oldest_match_date is None:
+        if oldest_same_day is None:
             destination_path = to_manual_check(file_path, "date_not_matching_file_name_date", matching_dates)
         else:
             destination_path = to_manual_check(file_path, "older_date_than_file_name_date_found", matching_dates)
@@ -211,7 +204,7 @@ def calc(copied_data_path: str):
             continue
         if check_for_pass_file(file_path):
             continue
-        matching_dates: list[str] = get_matching_dates(file_path, ids)
+        matching_dates, oldest_date, oldest_same_day = get_matching_dates(file_path, ids)
 
         if len(matching_dates) == 0:
             destination_path = to_not_found(file_path)
@@ -219,7 +212,7 @@ def calc(copied_data_path: str):
             os.utime(destination_path, (timestamp, timestamp))
             continue
 
-        handle_found_date(file_path, matching_dates)
+        handle_found_date(file_path, matching_dates, oldest_date, oldest_same_day)
 
 
 def main():
