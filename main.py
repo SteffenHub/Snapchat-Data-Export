@@ -15,6 +15,7 @@ VIDEO_SUFFIX = {'.mp4', '.mov', '.avi', '.mkv', '.webm', '.flv', '.wmv', '.m4v'}
 DATE_FILE_NAME_PATTERN = re.compile(r"^(\d{4})-(\d{2})-(\d{2})")
 IGNORE_FILES = {".DS_Store", ".gitkeep", ".gitignore", "Thumbs.db", "desktop.ini"}
 
+
 def safe_move(src_path: str, dst_dir: str, move: bool = True) -> str:
     if not os.path.exists(src_path):
         raise FileNotFoundError(f"Path does not exists: {src_path}")
@@ -52,20 +53,24 @@ def get_all_file_paths(path) -> list[str]:
             file_names.append(file_path)
     return file_names
 
+
 def to_found(file_path) -> str:
     found_path = f"{OUTPUT_PATH}/found_files"
     os.makedirs(found_path, exist_ok=True)
     return safe_move(file_path, found_path)
+
 
 def to_not_found(file_path) -> str:
     found_path = f"{OUTPUT_PATH}/not_found_files"
     os.makedirs(found_path, exist_ok=True)
     return safe_move(file_path, found_path)
 
+
 def to_passed(file_path, sub_dir: str) -> str:
     found_path = f"{OUTPUT_PATH}/passed_files/{sub_dir}"
     os.makedirs(found_path, exist_ok=True)
     return safe_move(file_path, found_path)
+
 
 def to_manual_check(file_path, sub_dir, matching_dates=None) -> str:
     found_path = f"{OUTPUT_PATH}/manual_check/{sub_dir}"
@@ -89,7 +94,8 @@ def to_manual_check(file_path, sub_dir, matching_dates=None) -> str:
                 f.write(date + "\n")
     return destination_path
 
-def check_for_pass_file(file_path)-> bool:
+
+def check_for_pass_file(file_path) -> bool:
     """
     True if the file was passed
     False if the file was not passed
@@ -107,6 +113,7 @@ def check_for_pass_file(file_path)-> bool:
         to_passed(file_path, "other_files")
         return True
     return False
+
 
 def read_all_ids_from_json() -> list[dict[str, str | list[str]]]:
     with open(memories_history_path, "r", encoding="utf-8") as file:
@@ -128,6 +135,7 @@ def read_all_ids_from_json() -> list[dict[str, str | list[str]]]:
                 ids.append({"date": entry2["Created"], "ids": [entry2["Media IDs"]]})
     return ids
 
+
 def get_matching_dates(file_path, ids) -> list[str]:
     matching_dates: list[str] = []
     for entry in ids:
@@ -136,6 +144,7 @@ def get_matching_dates(file_path, ids) -> list[str]:
                 matching_dates.append(entry["date"])
                 break
     return matching_dates
+
 
 def handle_found_date(file_path, matching_dates):
     oldest_date = min(
@@ -163,13 +172,15 @@ def handle_found_date(file_path, matching_dates):
         destination_path = to_found(file_path)
         os.utime(destination_path, (oldest_date.timestamp(), oldest_date.timestamp()))
 
-def get_datetime_from_file_path(file_path:str):
+
+def get_datetime_from_file_path(file_path: str):
     match = DATE_FILE_NAME_PATTERN.match(os.path.basename(file_path))
     if match:
         year, month, day = map(int, match.groups())
         date = datetime(year, month, day)
         return date
     return None
+
 
 def remove_copied_folder(copied_data_path):
     remaining_files_found = False
@@ -184,13 +195,14 @@ def remove_copied_folder(copied_data_path):
     else:
         shutil.rmtree(copied_data_path)
 
+
 def save_readme():
     with open(f"{OUTPUT_PATH}/README.txt", "w", encoding="utf-8") as f:
-        f.write("TODO") # TODO add readme content (Folder structure)
+        f.write("TODO")  # TODO add readme content (Folder structure)
+
 
 def calc(copied_data_path: str):
-
-    ids:list[dict[str, str | list[str]]] = read_all_ids_from_json()
+    ids: list[dict[str, str | list[str]]] = read_all_ids_from_json()
 
     all_file_paths = get_all_file_paths(copied_data_path)
 
