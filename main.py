@@ -14,7 +14,6 @@ VIDEO_SUFFIX = {'.mp4', '.mov', '.avi', '.mkv', '.webm', '.flv', '.wmv', '.m4v'}
 DATE_FILE_NAME_PATTERN = re.compile(r"^(\d{4})-(\d{2})-(\d{2})")
 IGNORE_FILES = {".DS_Store", ".gitkeep", ".gitignore", "Thumbs.db", "desktop.ini"}
 # TODO enumerate result folder
-# TODO describe output directories
 # TODO check if date does not matches date in filename
 # TODO consider json/chat_history.json
 def safe_move(src_path: str, dst_dir: str, move: bool = True) -> str:
@@ -154,10 +153,16 @@ def remove_copied_folder(copied_data_path):
     else:
         shutil.rmtree(copied_data_path)
 
+def save_readme():
+    with open(f"{OUTPUT_PATH}/README.txt", "w", encoding="utf-8") as f:
+        f.write("TODO") # TODO add readme content (Folder structure)
+
+
 def main():
     copied_data_path = safe_move(data_path, os.path.dirname(data_path), False)
     calc(copied_data_path)
     remove_copied_folder(copied_data_path)
+    save_readme()
 
 
 if __name__ == '__main__':
