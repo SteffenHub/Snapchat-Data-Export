@@ -16,6 +16,7 @@ IGNORE_FILES = {".DS_Store", ".gitkeep", ".gitignore", "Thumbs.db", "desktop.ini
 # TODO enumerate result folder
 # TODO describe output directories
 # TODO check if date does not matches date in filename
+# TODO consider json/chat_history.json
 def safe_move(src_path: str, dst_dir: str, move: bool = True) -> str:
     if not os.path.exists(src_path):
         raise FileNotFoundError(f"Path does not exists: {src_path}")
@@ -99,6 +100,9 @@ def calc(copied_data_path: str):
             continue
         if "overlay" in file_path:
             to_passed(file_path, "overlays")
+            continue
+        if "thumbnail" in file_path:
+            to_passed(file_path, "thumbnails")
             continue
         if ("." + file_path.split(".")[-1] not in PHOTO_SUFFIX) and ("." + file_path.split(".")[-1] not in VIDEO_SUFFIX):
             to_passed(file_path, "other_files")
