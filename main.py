@@ -116,23 +116,25 @@ def check_for_pass_file(file_path) -> bool:
 
 
 def read_all_ids_from_json() -> list[dict[str, str | list[str]]]:
-    with open(memories_history_path, "r", encoding="utf-8") as file:
-        memories_history = json.load(file)
-    with open(chat_history_path, "r", encoding="utf-8") as file:
-        chat_history = json.load(file)
+    with open(memories_history_path, "r", encoding="utf-8") as f1, \
+         open(chat_history_path, "r", encoding="utf-8") as f2:
+        memories_history = json.load(f1)
+        chat_history = json.load(f2)
 
     ids: list[dict[str, str | list[str]]] = []
-    for entry in memories_history["Saved Media"]:
-        link = entry["Download Link"]
-        query_params = parse_qs(urlparse(link).query)
-        sid, uid = query_params.get("sid", [None])[0], query_params.get("uid", [None])[0]
-        mid, sig = query_params.get("mid", [None])[0], query_params.get("sig", [None])[0]
-        ids.append({"date": entry["Date"], "ids": [sid, mid, uid, sig]})
 
-    for entry in chat_history:
-        for entry2 in chat_history[entry]:
-            if entry2["Media Type"] == "MEDIA":
-                ids.append({"date": entry2["Created"], "ids": [entry2["Media IDs"]]})
+    for entry in memories_history.get("Saved Media", []):
+        params = parse_qs(urlparse(entry["Download Link"]).query)
+        extracted_ids = [params.get(k, [None])[0] for k in ("sid", "mid", "uid", "sig")]
+        ids.append({"date": entry["Date"], "ids": extracted_ids})
+
+    for messages in chat_history.values():
+        for msg in messages:
+            if msg.get("Media Type") == "MEDIA":
+                media_ids = msg.get("Media IDs")
+                media_ids = media_ids if isinstance(media_ids, list) else [media_ids]
+                ids.append({"date": msg["Created"], "ids": media_ids})
+
     return ids
 
 
