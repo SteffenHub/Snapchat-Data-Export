@@ -72,7 +72,7 @@ def to_passed(file_path, sub_dir: str) -> str:
     return safe_move(file_path, found_path)
 
 
-def to_manual_check(file_path, sub_dir, matching_dates=None) -> str:
+def to_manual_check(file_path, sub_dir, matching_dates=None, found_in_messages=None) -> str:
     found_path = os.path.join(OUTPUT_PATH, "manual_check", sub_dir)
     os.makedirs(found_path, exist_ok=True)
     destination_path = safe_move(file_path, found_path)
@@ -96,7 +96,8 @@ def to_manual_check(file_path, sub_dir, matching_dates=None) -> str:
         with open(destination_path + ".txt", "w", encoding="utf-8") as f:
             f.write(message_map[sub_dir])
             if matching_dates:
-                f.write("\n".join(matching_dates))
+                for i in range(len(matching_dates)):
+                    f.write(f"{matching_dates[i]} {found_in_messages[i]} \n")
 
     return destination_path
 
@@ -129,24 +130,26 @@ def read_all_ids_from_json() -> list[dict[str, str | list[str]]]:
 
     ids: list[dict[str, str | list[str]]] = []
 
-    for entry in memories_history.get("Saved Media", []):
+    for index, entry in enumerate(memories_history.get("Saved Media", [])):
         params = parse_qs(urlparse(entry["Download Link"]).query)
         extracted_ids = [params.get(k, [None])[0] for k in ("sid", "mid", "uid", "sig")]
-        ids.append({"date": entry["Date"], "ids": extracted_ids})
+        ids.append({"date": entry["Date"], "ids": extracted_ids, "found_message": f"Found in memories_history.json at entry: {index}"})
 
     for messages in chat_history.values():
         for msg in messages:
             if msg.get("Media Type") == "MEDIA":
                 media_ids = msg.get("Media IDs")
                 media_ids = media_ids if isinstance(media_ids, list) else [media_ids]
-                ids.append({"date": msg["Created"], "ids": media_ids})
+                ids.append({"date": msg["Created"], "ids": media_ids, "found_message": f"Found in chat_history.json in chat with {msg.get('From')}"})
 
     return ids
 
 
-def get_matching_dates(file_path, ids) -> tuple[list[str], datetime, datetime | None]:
+def get_matching_dates(file_path, ids) -> tuple[list[str], datetime, datetime | None, list[str]]:
     matching_dates: list[str] = [entry["date"] for entry in ids
                       if any(media_id in file_path for media_id in entry["ids"])]
+    found_in_messages: list[str] = [entry["found_message"] for entry in ids
+                                 if any(media_id in file_path for media_id in entry["ids"])]
 
     parsed_dates: list[datetime] = [datetime.strptime(d.replace(" UTC", ""), "%Y-%m-%d %H:%M:%S")
                     for d in matching_dates]
@@ -157,16 +160,16 @@ def get_matching_dates(file_path, ids) -> tuple[list[str], datetime, datetime | 
     same_day_matches = [d for d in parsed_dates if d.date() == file_date]
     oldest_same_day = min(same_day_matches) if same_day_matches else None
 
-    return matching_dates, oldest_date, oldest_same_day
+    return matching_dates, oldest_date, oldest_same_day, found_in_messages
 
 
-def handle_found_date(file_path, matching_dates, oldest_date, oldest_same_day):
+def handle_found_date(file_path, matching_dates, oldest_date, oldest_same_day, found_in_messages):
     date_from_file_name = get_datetime_from_file_path(file_path)
     if oldest_date.date() != date_from_file_name.date():
         if oldest_same_day is None:
-            destination_path = to_manual_check(file_path, "date_not_matching_file_name_date", matching_dates)
+            destination_path = to_manual_check(file_path, "date_not_matching_file_name_date", matching_dates, found_in_messages)
         else:
-            destination_path = to_manual_check(file_path, "older_date_than_file_name_date_found", matching_dates)
+            destination_path = to_manual_check(file_path, "older_date_than_file_name_date_found", matching_dates, found_in_messages)
         timestamp = date_from_file_name.timestamp() if date_from_file_name.date() < oldest_date.date() else oldest_date.timestamp()
         os.utime(destination_path, (timestamp, timestamp))
     else:
@@ -212,7 +215,7 @@ def calc(copied_data_path: str):
             continue
         if check_for_pass_file(file_path):
             continue
-        matching_dates, oldest_date, oldest_same_day = get_matching_dates(file_path, ids)
+        matching_dates, oldest_date, oldest_same_day, found_in_message = get_matching_dates(file_path, ids)
 
         if len(matching_dates) == 0:
             destination_path = to_not_found(file_path)
@@ -220,7 +223,7 @@ def calc(copied_data_path: str):
             os.utime(destination_path, (timestamp, timestamp))
             continue
 
-        handle_found_date(file_path, matching_dates, oldest_date, oldest_same_day)
+        handle_found_date(file_path, matching_dates, oldest_date, oldest_same_day, found_in_message)
 
 
 def main():
