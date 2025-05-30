@@ -80,14 +80,14 @@ def to_manual_check(file_path, sub_dir, matching_dates=None, found_in_messages=N
     message_map = {
         "date_not_matching_file_name_date": (
             "The oldest found date does not match the date in the file name.\n"
-            "The oldest date either in the file name or in the JSON files was set for this file.\n"
-            "If the file name date was used, the time was set to 00:00.\n"
+            "The oldest date and time which are in the filename and in the json files will be used"
+            "If no date in the json files found which matching the filename date the oldest found date will be used.\n"
             "Please check which date is correct.\n\n"
         ),
         "older_date_than_file_name_date_found": (
             "Found a date in the JSON files which is older than the date in the filename.\n"
-            "The oldest date either in the file name or in the JSON files was set for this file.\n"
-            "If the file name date was used, the time was set to 00:00.\n"
+            "The oldest date and time which are in the filename and in the json files will be used"
+            "If no date in the json files found which matching the filename date the oldest found date will be used.\n"
             "Please check which date is correct.\n\n"
         )
     }
@@ -137,7 +137,7 @@ def read_all_ids_from_json() -> list[dict[str, str | list[str]]]:
 
     for messages in chat_history.values():
         for msg in messages:
-            if msg.get("Media Type") == "MEDIA":
+            if msg.get("Media Type") == "MEDIA": #and msg["Media IDs"] != "":
                 media_ids = msg.get("Media IDs")
                 media_ids = media_ids if isinstance(media_ids, list) else [media_ids]
                 ids.append({"date": msg["Created"], "ids": media_ids, "found_message": f"Found in chat_history.json in chat with {msg.get('From')}"})
@@ -170,7 +170,7 @@ def handle_found_date(file_path, matching_dates, oldest_date, oldest_same_day, f
             destination_path = to_manual_check(file_path, "date_not_matching_file_name_date", matching_dates, found_in_messages)
         else:
             destination_path = to_manual_check(file_path, "older_date_than_file_name_date_found", matching_dates, found_in_messages)
-        timestamp = date_from_file_name.timestamp() if date_from_file_name.date() < oldest_date.date() else oldest_date.timestamp()
+        timestamp = oldest_same_day.timestamp() if oldest_same_day is not None else oldest_date.timestamp()
         os.utime(destination_path, (timestamp, timestamp))
     else:
         destination_path = to_found(file_path)
