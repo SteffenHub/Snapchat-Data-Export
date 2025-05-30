@@ -117,7 +117,9 @@ def calc(copied_data_path: str):
         if "thumbnail" in file_path:
             to_passed(file_path, "thumbnails")
             continue
-        # TODO check file name contains metadata
+        if "metadata" in file_path:
+            to_passed(file_path, "metadata")
+            continue
         if ("." + file_path.split(".")[-1] not in PHOTO_SUFFIX) and ("." + file_path.split(".")[-1] not in VIDEO_SUFFIX):
             to_passed(file_path, "other_files")
             continue
