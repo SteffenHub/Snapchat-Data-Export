@@ -14,7 +14,7 @@ PHOTO_SUFFIX = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.webp', '.tiff'}
 VIDEO_SUFFIX = {'.mp4', '.mov', '.avi', '.mkv', '.webm', '.flv', '.wmv', '.m4v'}
 DATE_FILE_NAME_PATTERN = re.compile(r"^(\d{4})-(\d{2})-(\d{2})")
 IGNORE_FILES = {".DS_Store", ".gitkeep", ".gitignore", "Thumbs.db", "desktop.ini"}
-# TODO check if date does not matches date in filename
+
 def safe_move(src_path: str, dst_dir: str, move: bool = True) -> str:
     if not os.path.exists(src_path):
         raise FileNotFoundError(f"Path does not exists: {src_path}")
