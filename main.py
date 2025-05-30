@@ -89,13 +89,32 @@ def to_manual_check(file_path, sub_dir, matching_dates=None) -> str:
                 f.write(date + "\n")
     return destination_path
 
-def calc(copied_data_path: str):
+def check_for_pass_file(file_path)-> bool:
+    """
+    True if the file was passed
+    False if the file was not passed
+    """
+    if "overlay" in file_path:
+        to_passed(file_path, "overlays")
+        return True
+    if "thumbnail" in file_path:
+        to_passed(file_path, "thumbnails")
+        return True
+    if "metadata" in file_path:
+        to_passed(file_path, "metadata")
+        return True
+    if ("." + file_path.split(".")[-1] not in PHOTO_SUFFIX) and ("." + file_path.split(".")[-1] not in VIDEO_SUFFIX):
+        to_passed(file_path, "other_files")
+        return True
+    return False
+
+def read_all_ids_from_json() -> list[dict[str, str | list[str]]]:
     with open(memories_history_path, "r", encoding="utf-8") as file:
         memories_history = json.load(file)
     with open(chat_history_path, "r", encoding="utf-8") as file:
         chat_history = json.load(file)
 
-    ids:list[dict[str, str | list[str]]] = []
+    ids: list[dict[str, str | list[str]]] = []
     for entry in memories_history["Saved Media"]:
         link = entry["Download Link"]
         query_params = parse_qs(urlparse(link).query)
@@ -107,60 +126,42 @@ def calc(copied_data_path: str):
         for entry2 in chat_history[entry]:
             if entry2["Media Type"] == "MEDIA":
                 ids.append({"date": entry2["Created"], "ids": [entry2["Media IDs"]]})
+    return ids
 
-    all_file_paths = get_all_file_paths(copied_data_path)
+def get_matching_dates(file_path, ids) -> list[str]:
+    matching_dates: list[str] = []
+    for entry in ids:
+        for media_id in entry["ids"]:
+            if media_id in file_path:
+                matching_dates.append(entry["date"])
+                break
+    return matching_dates
 
-    for file_path in tqdm(all_file_paths):
-        if ".DS_Store" in file_path:
-            continue
-        if "overlay" in file_path:
-            to_passed(file_path, "overlays")
-            continue
-        if "thumbnail" in file_path:
-            to_passed(file_path, "thumbnails")
-            continue
-        if "metadata" in file_path:
-            to_passed(file_path, "metadata")
-            continue
-        if ("." + file_path.split(".")[-1] not in PHOTO_SUFFIX) and ("." + file_path.split(".")[-1] not in VIDEO_SUFFIX):
-            to_passed(file_path, "other_files")
-            continue
-        matching_dates: list[str] = []
-        for entry in ids:
-            for media_id in entry["ids"]:
-                if media_id in file_path:
-                    matching_dates.append(entry["date"])
-                    break
-
-        if len(matching_dates) == 0:
-            destination_path = to_not_found(file_path)
-            timestamp = get_datetime_from_file_path(destination_path).timestamp()
-            os.utime(destination_path, (timestamp, timestamp))
-        else:
-            oldest_date = min(
-                datetime.strptime(d.replace(" UTC", ""), "%Y-%m-%d %H:%M:%S")
-                for d in matching_dates
-            )
-            date_from_file_name = get_datetime_from_file_path(file_path)
-            if oldest_date.date() != date_from_file_name.date():
-                oldest_match_date = None
-                for d in matching_dates:
-                    date = datetime.strptime(d.replace(" UTC", ""), "%Y-%m-%d %H:%M:%S")
-                    if date.date() == date_from_file_name.date():
-                        if oldest_match_date is None:
-                            oldest_match_date = date
-                        else:
-                            if date < oldest_match_date:
-                                oldest_match_date = date
+def handle_found_date(file_path, matching_dates):
+    oldest_date = min(
+        datetime.strptime(d.replace(" UTC", ""), "%Y-%m-%d %H:%M:%S")
+        for d in matching_dates
+    )
+    date_from_file_name = get_datetime_from_file_path(file_path)
+    if oldest_date.date() != date_from_file_name.date():
+        oldest_match_date = None
+        for d in matching_dates:
+            date = datetime.strptime(d.replace(" UTC", ""), "%Y-%m-%d %H:%M:%S")
+            if date.date() == date_from_file_name.date():
                 if oldest_match_date is None:
-                    destination_path = to_manual_check(file_path, "date_not_matching_file_name_date", matching_dates)
+                    oldest_match_date = date
                 else:
-                    destination_path = to_manual_check(file_path, "older_date_than_file_name_date_found", matching_dates)
-                timestamp = date_from_file_name.timestamp() if date_from_file_name.date() < oldest_date.date() else oldest_date.timestamp()
-                os.utime(destination_path, (timestamp, timestamp))
-            else:
-                destination_path = to_found(file_path)
-                os.utime(destination_path, (oldest_date.timestamp(), oldest_date.timestamp()))
+                    if date < oldest_match_date:
+                        oldest_match_date = date
+        if oldest_match_date is None:
+            destination_path = to_manual_check(file_path, "date_not_matching_file_name_date", matching_dates)
+        else:
+            destination_path = to_manual_check(file_path, "older_date_than_file_name_date_found", matching_dates)
+        timestamp = date_from_file_name.timestamp() if date_from_file_name.date() < oldest_date.date() else oldest_date.timestamp()
+        os.utime(destination_path, (timestamp, timestamp))
+    else:
+        destination_path = to_found(file_path)
+        os.utime(destination_path, (oldest_date.timestamp(), oldest_date.timestamp()))
 
 def get_datetime_from_file_path(file_path:str):
     match = DATE_FILE_NAME_PATTERN.match(os.path.basename(file_path))
@@ -186,6 +187,27 @@ def remove_copied_folder(copied_data_path):
 def save_readme():
     with open(f"{OUTPUT_PATH}/README.txt", "w", encoding="utf-8") as f:
         f.write("TODO") # TODO add readme content (Folder structure)
+
+def calc(copied_data_path: str):
+
+    ids:list[dict[str, str | list[str]]] = read_all_ids_from_json()
+
+    all_file_paths = get_all_file_paths(copied_data_path)
+
+    for file_path in tqdm(all_file_paths):
+        if ".DS_Store" in file_path:
+            continue
+        if check_for_pass_file(file_path):
+            continue
+        matching_dates: list[str] = get_matching_dates(file_path, ids)
+
+        if len(matching_dates) == 0:
+            destination_path = to_not_found(file_path)
+            timestamp = get_datetime_from_file_path(destination_path).timestamp()
+            os.utime(destination_path, (timestamp, timestamp))
+            continue
+
+        handle_found_date(file_path, matching_dates)
 
 
 def main():
