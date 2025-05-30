@@ -12,8 +12,10 @@ output_path = "./snapchat-memory-export-result"
 photo_endings = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.webp', '.tiff'}
 video_endings = {'.mp4', '.mov', '.avi', '.mkv', '.webm', '.flv', '.wmv', '.m4v'}
 date_file_name_pattern = re.compile(r"^(\d{4})-(\d{2})-(\d{2})")
-# TODO do not copy in case it already exists and has the same content
+IGNORE_FILES = {".DS_Store", ".gitkeep", ".gitignore", "Thumbs.db", "desktop.ini"}
 # TODO enumerate result folder
+# TODO describe output directories
+# TODO check if date does not matches date in filename
 def safe_move(src_path: str, dst_dir: str, move: bool = True) -> str:
     if not os.path.exists(src_path):
         raise FileNotFoundError(f"Path does not exists: {src_path}")
@@ -135,11 +137,23 @@ def calc(copied_data_path: str):
             timestamp = dt_utc.timestamp()
             os.utime(destination_path, (timestamp, timestamp))
 
+def remove_copied_folder(copied_data_path):
+    remaining_files_found = False
+    for root, dirs, files in os.walk(copied_data_path):
+        considered_files = [f for f in files if f not in IGNORE_FILES]
+        if considered_files:
+            print(f"Found remaining file in {root}: {considered_files}")
+            remaining_files_found = True
+    if remaining_files_found:
+        print(f"The copied data folder: '{copied_data_path}' contains remaining files. \n"
+              f"These files wasn't considered: Please check them")  # TODO automatically check if path is empty
+    else:
+        shutil.rmtree(copied_data_path)
+
 def main():
     copied_data_path = safe_move(data_path, os.path.dirname(data_path), False)
     calc(copied_data_path)
-    print(f"Make sure that {copied_data_path} only contains empty Folders in it. \n"
-          f"If there are files left these are not considered in this calculation") # TODO automatically check if path is empty
+    remove_copied_folder(copied_data_path)
 
 
 if __name__ == '__main__':
