@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 import os
 import json
@@ -10,7 +11,9 @@ history_path = "./json/memories_history.json"
 output_path = "./snapchat-memory-export-result"
 photo_endings = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.webp', '.tiff'}
 video_endings = {'.mp4', '.mov', '.avi', '.mkv', '.webm', '.flv', '.wmv', '.m4v'}
-
+date_file_name_pattern = re.compile(r"^(\d{4})-(\d{2})-(\d{2})")
+# TODO do not copy in case it already exists and has the same content
+# TODO enumerate result folder
 def safe_move(src_path: str, dst_dir: str, move: bool = True) -> str:
     if not os.path.exists(src_path):
         raise FileNotFoundError(f"Path does not exists: {src_path}")
@@ -111,8 +114,13 @@ def calc(copied_data_path: str):
                 matching_dates.append(date)
 
         if len(matching_dates) == 0:
-            to_not_found(file_path)
-            # TODO use date from filename if exists
+            destination_path = to_not_found(file_path)
+            match = date_file_name_pattern.match(os.path.basename(destination_path))
+            if match:
+                year, month, day = map(int, match.groups())
+                date = datetime(year, month, day)
+                timestamp = date.timestamp()
+                os.utime(destination_path, (timestamp, timestamp))
         elif len(matching_dates) > 1:
             destination_path = to_manual_check(file_path, "many_dates", matching_dates)
             oldest_date = min(
